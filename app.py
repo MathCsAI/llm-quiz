@@ -50,7 +50,8 @@ async def _probe_aipipe_models() -> dict:
         return results
     headers = {"Authorization": f"Bearer {token}"}
     model_urls = [
-        os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.ai/openai/v1/models"),
+        os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.org/openrouter/v1/models"),
+        "https://aipipe.ai/openai/v1/models",
         "https://aipipe.ai/v1/models",
     ]
     async with httpx.AsyncClient(timeout=10.0) as client:
@@ -85,7 +86,7 @@ async def run_self_check() -> dict:
             email=os.getenv("EMAIL", "test@example.com"),
             secret=os.getenv("SECRET_KEY", "secret")
         )
-        content = await solver.call_llm("ping", model=DEFAULT_MODEL, max_tokens=10)
+        content = await solver.call_llm("ping", model=None, max_tokens=10)
         if content:
             logger.info(f"Self-check LLM call succeeded: {len(content)} chars")
             summary["llm_call"] = {"ok": True, "len": len(content)}

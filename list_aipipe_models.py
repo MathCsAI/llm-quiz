@@ -3,7 +3,8 @@ import os
 import httpx
 
 ENDPOINTS = [
-    os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.ai/openai/v1/models"),
+    os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.org/openrouter/v1/models"),
+    "https://aipipe.ai/openai/v1/models",
     "https://aipipe.ai/v1/models",
 ]
 

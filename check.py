@@ -120,7 +120,7 @@ def check_configuration():
         print(f"🔗 API Configuration:")
         print(f"   Endpoint: {AI_PIPE_API_URL}")
         
-        correct_url = "aipipe.ai" in AI_PIPE_API_URL
+        correct_url = ("aipipe.ai" in AI_PIPE_API_URL) or ("aipipe.org" in AI_PIPE_API_URL)
         if correct_url:
             print(f"   ✅ PASS - Using correct API endpoint")
         else:

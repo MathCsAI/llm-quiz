@@ -60,7 +60,7 @@ class TestCases:
             
             # Validate we have a non-empty model and correct API host
             assert isinstance(DEFAULT_MODEL, str) and len(DEFAULT_MODEL) > 0, "DEFAULT_MODEL is empty"
-            assert "aipipe.ai" in AI_PIPE_API_URL, f"Wrong API URL: {AI_PIPE_API_URL}"
+            assert ("aipipe.ai" in AI_PIPE_API_URL) or ("aipipe.org" in AI_PIPE_API_URL), f"Wrong API URL: {AI_PIPE_API_URL}"
             
             self.log_result("Configuration Validation", True, f"API: {AI_PIPE_API_URL}")
         except Exception as e:

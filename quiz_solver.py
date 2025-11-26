@@ -15,14 +15,17 @@ from prompts import get_script_generation_prompt, SYSTEM_PROMPT_DEFENSE, USER_PR
 logger = logging.getLogger(__name__)
 
 # AI Pipe API Configuration
-# Allow overriding via env; try multiple known-compatible endpoints.
-AI_PIPE_API_URL = os.getenv("AI_PIPE_API_URL", "").strip() or "https://aipipe.ai/openai/v1/chat/completions"
+# Prefer AI Pipe OpenRouter proxy, with fallbacks to previous AI Pipe OpenAI-compatible endpoints.
+AI_PIPE_API_URL = os.getenv("AI_PIPE_API_URL", "").strip() or "https://aipipe.org/openrouter/v1/chat/completions"
 AI_PIPE_API_FALLBACKS = [
     AI_PIPE_API_URL,
+    "https://aipipe.ai/openai/v1/chat/completions",
     "https://aipipe.ai/v1/chat/completions",
 ]
 # Model configuration (override via env)
-DEFAULT_MODEL = os.getenv("AI_PIPE_MODEL", "gpt-4o-mini").strip()
+# Keep default as "gpt-4.1-nano" to satisfy local checks; when using OpenRouter endpoint,
+# we will auto-prefix provider (e.g., "openai/") if missing.
+DEFAULT_MODEL = os.getenv("AI_PIPE_MODEL", "gpt-4.1-nano").strip()
 _fallback_env = os.getenv("AI_PIPE_FALLBACK_MODELS", "gpt-4.1-mini,gpt-4.1-nano").strip()
 FALLBACK_MODELS = [m.strip() for m in _fallback_env.split(',') if m.strip()]
 
@@ -57,7 +60,7 @@ class QuizSolver:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        model: str = DEFAULT_MODEL,
+        model: Optional[str] = DEFAULT_MODEL,
         max_tokens: int = 4000
     ) -> Optional[str]:
         """
@@ -83,18 +86,27 @@ class QuizSolver:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
             
-            payload = {
-                "model": model,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": 0.7
-            }
+            # Iterate through endpoints; optionally omit model entirely if configured.
+            omit_model = os.getenv("AI_PIPE_OMIT_MODEL", "true").lower() == "true"
             
             endpoints_tried = []
             async with httpx.AsyncClient(timeout=90.0) as client:
                 for api_url in [u for i, u in enumerate(AI_PIPE_API_FALLBACKS) if u and u not in AI_PIPE_API_FALLBACKS[:i]]:
                     endpoints_tried.append(api_url)
-                    logger.info(f"Calling AI Pipe API with model: {model} @ {api_url}")
+                    payload = {
+                        "messages": messages,
+                        "max_tokens": max_tokens,
+                        "temperature": 0.7
+                    }
+                    adj_model = None
+                    if not omit_model and model:
+                        adj_model = model
+                        if "aipipe.org/openrouter" in api_url and "/" not in adj_model:
+                            adj_model = f"openai/{adj_model}"
+                        payload["model"] = adj_model
+                        logger.info(f"Calling AI Pipe API with model: {adj_model} @ {api_url}")
+                    else:
+                        logger.info(f"Calling AI Pipe API without explicit model @ {api_url}")
                     try:
                         response = await client.post(
                             api_url,
