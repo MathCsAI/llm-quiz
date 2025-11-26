@@ -21,8 +21,10 @@ AI_PIPE_API_FALLBACKS = [
     AI_PIPE_API_URL,
     "https://aipipe.ai/v1/chat/completions",
 ]
-DEFAULT_MODEL = "gpt-4o-mini"
-FALLBACK_MODELS = ["gpt-4.1-mini"]
+# Model configuration (override via env)
+DEFAULT_MODEL = os.getenv("AI_PIPE_MODEL", "gpt-4o-mini").strip()
+_fallback_env = os.getenv("AI_PIPE_FALLBACK_MODELS", "gpt-4.1-mini,gpt-4.1-nano").strip()
+FALLBACK_MODELS = [m.strip() for m in _fallback_env.split(',') if m.strip()]
 
 # Time limits
 MAX_TOTAL_TIME = 180  # 3 minutes total
