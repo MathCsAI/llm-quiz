@@ -51,8 +51,9 @@ RUN chmod +x setup.sh start_server.sh || true
 # Expose port for HF Spaces
 EXPOSE 7860
 
-# Set environment variable for HF Spaces
+# Set environment variables for HF Spaces
 ENV PORT=7860
+ENV PYTHONUNBUFFERED=1
 
 # Run the application with app.py (HF Spaces convention)
-CMD ["python", "app.py"]
+CMD ["python", "-u", "app.py"]
