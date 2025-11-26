@@ -5,6 +5,7 @@ Receives quiz tasks via POST endpoint and solves them using LLM-generated script
 import os
 import asyncio
 import httpx
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, HttpUrl
@@ -18,13 +19,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="LLM Quiz Solver API",
-    description="Automated quiz solving using LLM-generated scripts",
-    version="1.0.0"
-)
 
 # Request model
 class QuizRequest(BaseModel):
@@ -98,8 +92,10 @@ async def run_self_check() -> dict:
         summary["llm_call"] = {"ok": False, "error": str(e)}
     return summary
 
-@app.on_event("startup")
-async def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    # Startup
     if ENABLE_STARTUP_SELF_CHECK:
         logger.info("Startup self-check enabled; running...")
         try:
@@ -118,6 +114,18 @@ async def on_startup():
                     logger.error(f"Periodic self-check error: {e}")
                 await asyncio.sleep(SELF_CHECK_INTERVAL_SECONDS)
         asyncio.create_task(_loop())
+    
+    yield
+    
+    # Shutdown (if needed in future)
+
+# Initialize FastAPI app with lifespan
+app = FastAPI(
+    title="LLM Quiz Solver API",
+    description="Automated quiz solving using LLM-generated scripts",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 @app.get("/")
 async def root(run_self_check: bool = False, enqueue_demo: bool = False, background_tasks: BackgroundTasks = None):

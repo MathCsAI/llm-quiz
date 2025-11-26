@@ -87,7 +87,7 @@ class QuizSolver:
             messages.append({"role": "user", "content": prompt})
             
             # Iterate through endpoints; optionally omit model entirely if configured.
-            omit_model = os.getenv("AI_PIPE_OMIT_MODEL", "true").lower() == "true"
+            omit_model = os.getenv("AI_PIPE_OMIT_MODEL", "false").lower() == "true"
             
             endpoints_tried = []
             async with httpx.AsyncClient(timeout=90.0) as client:
