@@ -1,0 +1,41 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    name: Mirror repo to HF Space
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }} # e.g. MathCsAi/llm-quiz-solver
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}       # HF access token with write perms
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify secrets
+        run: |
+          test -n "$HF_SPACE_ID" || (echo "HF_SPACE_ID is not set" && exit 1)
+          test -n "$HF_TOKEN" || (echo "HF_TOKEN is not set" && exit 1)
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+      - name: Add HF remote
+        run: |
+          # Use token in remote URL for auth; username can be anything non-empty
+          HF_REMOTE_URL="https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID}.git"
+          git remote add hf "$HF_REMOTE_URL" || git remote set-url hf "$HF_REMOTE_URL"
+          git remote -v
+
+      - name: Push to HF Space
+        run: |
+          # Push current commit on main to HF Space's main branch
+          git push hf HEAD:main --force-with-lease
