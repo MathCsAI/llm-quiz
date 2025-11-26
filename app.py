@@ -119,8 +119,11 @@ async def on_startup():
         asyncio.create_task(_loop())
 
 @app.get("/")
-async def root():
-    """Health check endpoint"""
+async def root(run_self_check: bool = False, enqueue_demo: bool = False, background_tasks: BackgroundTasks = None):
+    """Health check endpoint with optional self-check trigger"""
+    if run_self_check:
+        result = await self_check(background_tasks or BackgroundTasks(), enqueue_demo=enqueue_demo)
+        return result.body if isinstance(result, JSONResponse) else result
     return {
         "status": "running",
         "message": "LLM Quiz Solver API is operational",
