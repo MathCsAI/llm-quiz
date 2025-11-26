@@ -29,6 +29,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Log startup information"""
+    logger.info("=" * 60)
+    logger.info("LLM Quiz Solver API Starting...")
+    logger.info(f"Port: {os.getenv('PORT', '8000')}")
+    logger.info(f"Email configured: {bool(EMAIL)}")
+    logger.info(f"Secret configured: {bool(SECRET_KEY)}")
+    logger.info("=" * 60)
+
 # Configuration
 SECRET_KEY = os.getenv("SECRET_KEY")
 EMAIL = os.getenv("EMAIL")
