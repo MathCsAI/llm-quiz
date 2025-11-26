@@ -92,55 +92,23 @@ class QuizSolver:
             logger.info(f"Calling Gemini API with model: {model}")
             
             async with httpx.AsyncClient(timeout=90.0) as client:
-                attempt = 0
-                while attempt < 2:  # one retry allowed for rate-limit
-                    attempt += 1
-                    try:
-                        response = await client.post(
-                            api_url,
-                            headers=headers,
-                            json=payload
-                        )
-                    except httpx.TimeoutException as e:
-                        logger.error(f"Timeout contacting Gemini API: {e}")
-                        return None
-                    except Exception as e:
-                        logger.error(f"Network error contacting Gemini API: {type(e).__name__}: {e}")
-                        return None
+                try:
+                    response = await client.post(
+                        api_url,
+                        headers=headers,
+                        json=payload
+                    )
+                except httpx.TimeoutException as e:
+                    logger.error(f"Timeout contacting Gemini API: {e}")
+                    return None
+                except Exception as e:
+                    logger.error(f"Network error contacting Gemini API: {type(e).__name__}: {e}")
+                    return None
 
-                    logger.info(f"API Response Status: {response.status_code}")
-                    if response.status_code == 429:
-                        # Parse retry delay if provided
-                        try:
-                            data = response.json()
-                            retry_info = None
-                            for det in data.get("error", {}).get("details", []):
-                                if det.get("@type", "").endswith("RetryInfo"):
-                                    retry_info = det
-                                    break
-                            delay_raw = retry_info.get("retryDelay") if retry_info else None
-                            delay_secs = None
-                            if delay_raw:
-                                # retryDelay like '54s'
-                                if delay_raw.endswith('s') and delay_raw[:-1].isdigit():
-                                    delay_secs = int(delay_raw[:-1])
-                            if delay_secs is None:
-                                delay_secs = 10  # default small backoff
-                            elapsed = time.time() - self.start_time
-                            remaining = MAX_TOTAL_TIME - elapsed
-                            if remaining <= delay_secs + 5:  # not enough time to wait+generate
-                                logger.warning(f"Not enough time to wait {delay_secs}s for retry; aborting model {model}")
-                                return None
-                            logger.warning(f"Rate limited (429). Waiting {delay_secs}s before retry (attempt {attempt})")
-                            await asyncio.sleep(delay_secs)
-                            continue  # retry loop
-                        except Exception as e:  # noqa: BLE001
-                            logger.error(f"Failed to parse 429 retry info: {type(e).__name__}: {e}")
-                            return None
-                    if response.status_code != 200:
-                        logger.error(f"Gemini API Error: {response.status_code} - {response.text}")
-                        return None
-                    break  # successful 200
+                logger.info(f"API Response Status: {response.status_code}")
+                if response.status_code != 200:
+                    logger.error(f"Gemini API Error: {response.status_code} - {response.text}")
+                    return None
 
                 result = response.json()
 
