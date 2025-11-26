@@ -54,9 +54,10 @@ except Exception as e:
 print("\n🤖 Testing LLM API connection...")
 async def test_llm():
     try:
+        from quiz_solver import DEFAULT_MODEL
         response = await solver.call_llm(
             prompt="Say 'Hello, I am working!' in exactly those words.",
-            model="gpt-4o-mini"
+            model=DEFAULT_MODEL
         )
         if response:
             print(f"✅ LLM responded: {response[:100]}...")
