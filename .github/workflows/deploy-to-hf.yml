@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify secrets
         run: |
@@ -37,4 +39,5 @@ jobs:
 
       - name: Push to HF Space
         run: |
-          git push hf HEAD:main --force || git push hf HEAD:main
+          git fetch hf || true
+          git push hf HEAD:main --force
