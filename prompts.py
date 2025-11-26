@@ -61,7 +61,7 @@ IMPORTANT:
 - If submit URL is not provided above, extract it from the question text
 - The answer field can be: boolean, int, float, string, dict, or base64-encoded file
 - Keep JSON payload under 1MB
-- Use environment variable AI_PIPE_TOKEN for any LLM API calls
+- Use environment variable GEMINI_API_KEY for any LLM API calls
 - Print the response from the submit endpoint
 - If response contains a new URL, print it clearly as "NEXT_URL: <url>"
 - Handle errors gracefully and retry submission once if it fails

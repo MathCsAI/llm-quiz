@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Check required environment variables
-required_vars = ["EMAIL", "SECRET_KEY", "AI_PIPE_TOKEN"]
+required_vars = ["EMAIL", "SECRET_KEY", "GEMINI_API_KEY"]
 missing_vars = [var for var in required_vars if not os.getenv(var)]
 
 if missing_vars:
@@ -19,13 +19,13 @@ if missing_vars:
     print("\nPlease create a .env file with:")
     print("EMAIL=23f2003858@ds.study.iitm.ac.in")
     print("SECRET_KEY=12356789")
-    print("AI_PIPE_TOKEN=your_token_here")
+    print("GEMINI_API_KEY=your_api_key_here")
     sys.exit(1)
 
 print("✅ Environment variables loaded")
 print(f"   EMAIL: {os.getenv('EMAIL')}")
 print(f"   SECRET_KEY: {'*' * len(os.getenv('SECRET_KEY'))}")
-print(f"   AI_PIPE_TOKEN: {'*' * 20}...")
+print(f"   GEMINI_API_KEY: {'*' * 20}...")
 
 # Test imports
 print("\n📦 Testing imports...")

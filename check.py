@@ -230,8 +230,7 @@ def check_quiz_solver():
         try:
             solver = QuizSolver(
                 email="test@example.com",
-                secret="test_secret",
-                ai_pipe_token="test_token"
+                secret="test_secret"
             )
             print(f"   ✅ PASS - Can instantiate QuizSolver")
             return True

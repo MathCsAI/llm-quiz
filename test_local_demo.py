@@ -13,7 +13,7 @@ from scraper import QuizScraper
 # Load environment variables
 EMAIL = os.getenv("EMAIL", "23f2003858@ds.study.iitm.ac.in")
 SECRET = os.getenv("SECRET_KEY", "123456789")
-AI_PIPE_TOKEN = os.getenv("AI_PIPE_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEMO_QUIZ_URL = "https://tds-llm-analysis.s-anand.net/demo"
 
 async def test_scraper():
@@ -62,8 +62,8 @@ async def test_full_solver():
     print("=" * 80)
     print()
     
-    if not AI_PIPE_TOKEN:
-        print("❌ AI_PIPE_TOKEN not set in environment")
+    if not GEMINI_API_KEY:
+        print("❌ GEMINI_API_KEY not set in environment")
         print("   Set it in .env file to run this test")
         return False
     

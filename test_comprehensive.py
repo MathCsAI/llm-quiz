@@ -483,9 +483,9 @@ async def main():
     print("   ✅ 'Script execution result'")
     print()
     print("3. If you see 'Timeout' or 'Error' messages:")
-    print("   - Check AI_PIPE_TOKEN is valid")
+    print("   - Check GEMINI_API_KEY is valid")
     print("   - Verify generativelanguage.googleapis.com API is responding")
-    print("   - Check model 'gpt-4o-mini' is available")
+    print("   - Check model 'gemini-1.5-flash' (or configured) is available")
     print()
     print("="*80)
 
