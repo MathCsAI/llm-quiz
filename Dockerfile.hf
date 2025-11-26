@@ -55,5 +55,5 @@ EXPOSE 7860
 ENV PORT=7860
 ENV PYTHONUNBUFFERED=1
 
-# Run the application with app.py (HF Spaces convention)
-CMD ["python", "-u", "app.py"]
+# Run uvicorn directly (simpler than app.py)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--log-level", "info"]
