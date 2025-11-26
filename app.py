@@ -65,7 +65,7 @@ async def receive_quiz_request(
         # Validate required fields
         if not all(key in payload for key in ["email", "secret", "url"]):
             logger.error("Missing required fields in payload")
-            raise HTTPException(status_code=400, detail="Missing required fields: email, secret, url")
+            raise HTTPException(status_code=422, detail="Missing required fields: email, secret, url")
         
         # Verify secret
         expected_secret = os.getenv("SECRET_KEY")

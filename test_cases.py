@@ -22,7 +22,7 @@ class TestCases:
         """
         self.hf_endpoint = hf_endpoint
         self.email = "23f2003858@ds.study.iitm.ac.in"
-        self.secret = "12356789"
+        self.secret = "123456789"
         self.results = []
     
     def log_result(self, test_name: str, passed: bool, message: str = ""):
