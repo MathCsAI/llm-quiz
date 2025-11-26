@@ -15,7 +15,7 @@ from prompts import get_script_generation_prompt, SYSTEM_PROMPT_DEFENSE, USER_PR
 logger = logging.getLogger(__name__)
 
 # AI Pipe API Configuration
-AI_PIPE_API_URL = "https://aipipe.ai/api/v1/chat/completions"
+AI_PIPE_API_URL = "https://aipipe.org/openai/v1"
 DEFAULT_MODEL = "gpt-4.1-nano"
 
 
