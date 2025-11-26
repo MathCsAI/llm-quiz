@@ -80,7 +80,7 @@ async def run_self_check() -> dict:
             email=os.getenv("EMAIL", "test@example.com"),
             secret=os.getenv("SECRET_KEY", "secret")
         )
-        content = await solver.call_llm("ping", model=None, max_tokens=10)
+        content = await solver.call_llm("ping", model=DEFAULT_MODEL, max_tokens=10)
         if content:
             logger.info(f"Self-check LLM call succeeded: {len(content)} chars")
             summary["llm_call"] = {"ok": True, "len": len(content)}
