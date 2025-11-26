@@ -12,9 +12,9 @@ jobs:
     permissions:
       contents: read
     env:
-      HF_USERNAME: ${{ secrets.HF_USERNAME }} # Your HF username e.g. MathCsAi
-      HF_SPACE_NAME: llm-quiz-solver          # Space name (fixed)
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}       # HF access token with write perms
+      HF_USERNAME: ${{ secrets.HF_USERNAME }}
+      HF_SPACE_NAME: llm-quiz-solver
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,12 +31,10 @@ jobs:
 
       - name: Add HF remote
         run: |
-          # Use token in remote URL for auth; username can be anything non-empty
-          HF_REMOTE_URL="https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git"
-          git remote add hf "$HF_REMOTE_URL" || git remote set-url hf "$HF_REMOTE_URL"
+          git remote add hf "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git" || \
+          git remote set-url hf "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git"
           git remote -v
 
       - name: Push to HF Space
         run: |
-          # Push current commit on main to HF Space's main branch
-          git push hf HEAD:main --force-with-lease
+          git push hf HEAD:main --force || git push hf HEAD:main
