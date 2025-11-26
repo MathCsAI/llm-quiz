@@ -15,7 +15,12 @@ from prompts import get_script_generation_prompt, SYSTEM_PROMPT_DEFENSE, USER_PR
 logger = logging.getLogger(__name__)
 
 # AI Pipe API Configuration
-AI_PIPE_API_URL = "https://aipipe.ai/v1/chat/completions"
+# Allow overriding via env; try multiple known-compatible endpoints.
+AI_PIPE_API_URL = os.getenv("AI_PIPE_API_URL", "").strip() or "https://aipipe.ai/openai/v1/chat/completions"
+AI_PIPE_API_FALLBACKS = [
+    AI_PIPE_API_URL,
+    "https://aipipe.ai/v1/chat/completions",
+]
 DEFAULT_MODEL = "gpt-4o-mini"
 FALLBACK_MODELS = ["gpt-4.1-mini"]
 
@@ -83,29 +88,41 @@ class QuizSolver:
                 "temperature": 0.7
             }
             
-            logger.info(f"Calling AI Pipe API with model: {model}")
+            endpoints_tried = []
             async with httpx.AsyncClient(timeout=90.0) as client:
-                response = await client.post(
-                    AI_PIPE_API_URL,
-                    headers=headers,
-                    json=payload
-                )
-                
-                logger.info(f"API Response Status: {response.status_code}")
-                
-                if response.status_code != 200:
-                    logger.error(f"API Error: {response.status_code} - {response.text}")
-                    return None
-                
-                result = response.json()
-                
-                if "choices" not in result or not result["choices"]:
-                    logger.error(f"Invalid API response: {result}")
-                    return None
-                
-                content = result["choices"][0]["message"]["content"]
-                logger.info(f"LLM response received ({len(content)} chars)")
-                return content
+                for api_url in [u for i, u in enumerate(AI_PIPE_API_FALLBACKS) if u and u not in AI_PIPE_API_FALLBACKS[:i]]:
+                    endpoints_tried.append(api_url)
+                    logger.info(f"Calling AI Pipe API with model: {model} @ {api_url}")
+                    try:
+                        response = await client.post(
+                            api_url,
+                            headers=headers,
+                            json=payload
+                        )
+                    except httpx.TimeoutException as e:
+                        logger.error(f"Timeout contacting {api_url}: {e}")
+                        continue
+                    except Exception as e:
+                        logger.error(f"Network error contacting {api_url}: {type(e).__name__}: {e}")
+                        continue
+
+                    logger.info(f"API Response Status: {response.status_code}")
+                    if response.status_code != 200:
+                        logger.error(f"API Error from {api_url}: {response.status_code} - {response.text}")
+                        # Try next endpoint if available
+                        continue
+
+                    result = response.json()
+                    if "choices" not in result or not result.get("choices"):
+                        logger.error(f"Invalid API response from {api_url}: {result}")
+                        continue
+
+                    content = result["choices"][0]["message"]["content"]
+                    logger.info(f"LLM response received ({len(content)} chars)")
+                    return content
+
+            logger.error(f"All AI Pipe endpoints failed: {endpoints_tried}")
+            return None
                 
         except httpx.TimeoutException as e:
             logger.error(f"Timeout calling LLM with model {model}: {e}")
