@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 GEMINI_API_URL = os.getenv("GEMINI_API_URL", "").strip() or "https://generativelanguage.googleapis.com/v1beta/models"
 # Model configuration (override via env)
 DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
-_fallback_env = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.5-pro,gemini-3-pro-preview").strip()
+_fallback_env = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.5-pro,gemini-3-pro-preview,gemini-2.0-flash-lite,gemini-2.0-flash,gemini-2.5-flash-lite").strip()
 FALLBACK_MODELS = [m.strip() for m in _fallback_env.split(',') if m.strip()]
 
 # Time limits
