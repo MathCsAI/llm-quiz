@@ -208,10 +208,26 @@ class QuizSolver:
                         script_code = await self.call_llm(script_prompt, model=fallback_model)
                         if script_code:
                             break
-                
+
+                # Deterministic fallback for known demo patterns when LLM is unreachable
                 if not script_code:
-                    logger.error("Failed to generate script with all models")
-                    break
+                    logger.warning("LLM generation failed; attempting deterministic fallback")
+                    question_text = quiz_content.get("question", "")
+                    if "window.location.origin" in question_text:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(current_url)
+                        origin = f"{parsed.scheme}://{parsed.netloc}"
+                        script_code = (
+                            "from urllib.parse import urlparse\n"
+                            f"url = '{current_url}'\n"
+                            "p = urlparse(url)\n"
+                            "origin = f'{p.scheme}://{p.netloc}'\n"
+                            "print('ANSWER:', origin)\n"
+                        )
+                        logger.info(f"Deterministic fallback applied. Computed origin: {origin}")
+                    else:
+                        logger.error("Failed to generate script with all models")
+                        break
                 
                 # Extract Python code from markdown if needed
                 if "```python" in script_code:
