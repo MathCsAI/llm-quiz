@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # AI Pipe API Configuration
 AI_PIPE_API_URL = "https://aipipe.org/openai/v1"
 DEFAULT_MODEL = "gpt-4.1-nano"
-
+FALLBACK_MODELS = ["gpt-4.1-nano"]
 
 # Time limits
 MAX_TOTAL_TIME = 180  # 3 minutes total
