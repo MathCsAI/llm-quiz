@@ -42,8 +42,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers (without install-deps since we already installed system deps)
-RUN playwright install chromium --with-deps
+# Install Playwright browsers (without --with-deps to avoid Ubuntu package issues on Debian)
+RUN playwright install chromium
 
 # Copy application code
 COPY app.py .
