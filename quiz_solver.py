@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 # AI Pipe API Configuration
 AI_PIPE_API_URL = "https://aipipe.ai/v1/chat/completions"
-DEFAULT_MODEL = "gpt-4.1-nano"
-FALLBACK_MODELS = ["gpt-4.1-nano"]
+DEFAULT_MODEL = "gpt-4o-mini"
+FALLBACK_MODELS = ["gpt-4.1-mini"]
 
 # Time limits
 MAX_TOTAL_TIME = 180  # 3 minutes total
@@ -84,21 +84,39 @@ class QuizSolver:
             }
             
             logger.info(f"Calling AI Pipe API with model: {model}")
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=90.0) as client:
                 response = await client.post(
                     AI_PIPE_API_URL,
                     headers=headers,
                     json=payload
                 )
-                response.raise_for_status()
+                
+                logger.info(f"API Response Status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    logger.error(f"API Error: {response.status_code} - {response.text}")
+                    return None
                 
                 result = response.json()
+                
+                if "choices" not in result or not result["choices"]:
+                    logger.error(f"Invalid API response: {result}")
+                    return None
+                
                 content = result["choices"][0]["message"]["content"]
                 logger.info(f"LLM response received ({len(content)} chars)")
                 return content
                 
+        except httpx.TimeoutException as e:
+            logger.error(f"Timeout calling LLM with model {model}: {e}")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error calling LLM with model {model}: {e.response.status_code} - {e.response.text}")
+            return None
         except Exception as e:
-            logger.error(f"Error calling LLM with model {model}: {e}")
+            logger.error(f"Error calling LLM with model {model}: {type(e).__name__} - {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     def execute_script(self, script_path: str) -> tuple[bool, str]:
