@@ -3,12 +3,14 @@ FastAPI application for LLM Quiz Solver
 Receives quiz tasks via POST endpoint and solves them using LLM-generated scripts
 """
 import os
+import asyncio
+import httpx
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, HttpUrl
 import logging
 
-from quiz_solver import solve_quiz_task
+from quiz_solver import solve_quiz_task, QuizSolver, DEFAULT_MODEL, AI_PIPE_API_FALLBACKS
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +32,92 @@ class QuizRequest(BaseModel):
     secret: str
     url: HttpUrl
 
+# Self-check configuration
+SELF_TEST_DEMO_URL = os.getenv(
+    "SELF_TEST_DEMO_URL",
+    "https://tds-llm-analysis.s-anand.net/demo"
+)
+ENABLE_STARTUP_SELF_CHECK = os.getenv("ENABLE_STARTUP_SELF_CHECK", "true").lower() == "true"
+ENABLE_PERIODIC_SELF_CHECKS = os.getenv("ENABLE_PERIODIC_SELF_CHECKS", "false").lower() == "true"
+SELF_CHECK_INTERVAL_SECONDS = int(os.getenv("SELF_CHECK_INTERVAL_SECONDS", "900"))
+
+async def _probe_aipipe_models() -> dict:
+    token = os.getenv("AI_PIPE_TOKEN")
+    results = {"attempts": []}
+    if not token:
+        logger.warning("AI_PIPE_TOKEN not set; skipping models probe")
+        results["skipped"] = True
+        return results
+    headers = {"Authorization": f"Bearer {token}"}
+    model_urls = [
+        os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.ai/openai/v1/models"),
+        "https://aipipe.ai/v1/models",
+    ]
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        for url in model_urls:
+            try:
+                resp = await client.get(url, headers=headers)
+                results["attempts"].append({
+                    "url": url,
+                    "status": resp.status_code,
+                    "ok": resp.status_code == 200
+                })
+            except Exception as e:
+                results["attempts"].append({
+                    "url": url,
+                    "error": str(e)
+                })
+    return results
+
+async def run_self_check() -> dict:
+    summary = {
+        "health": "ok",
+        "model": DEFAULT_MODEL,
+        "aipipe_endpoints": AI_PIPE_API_FALLBACKS,
+    }
+    # Probe models endpoint(s)
+    models_probe = await _probe_aipipe_models()
+    logger.info(f"AI Pipe models probe: {models_probe}")
+    summary["models_probe"] = models_probe
+    # Try a minimal LLM call
+    try:
+        solver = QuizSolver(
+            email=os.getenv("EMAIL", "test@example.com"),
+            secret=os.getenv("SECRET_KEY", "secret")
+        )
+        content = await solver.call_llm("ping", model=DEFAULT_MODEL, max_tokens=10)
+        if content:
+            logger.info(f"Self-check LLM call succeeded: {len(content)} chars")
+            summary["llm_call"] = {"ok": True, "len": len(content)}
+        else:
+            logger.warning("Self-check LLM call returned no content")
+            summary["llm_call"] = {"ok": False}
+    except Exception as e:
+        logger.error(f"Self-check LLM call failed: {e}")
+        summary["llm_call"] = {"ok": False, "error": str(e)}
+    return summary
+
+@app.on_event("startup")
+async def on_startup():
+    if ENABLE_STARTUP_SELF_CHECK:
+        logger.info("Startup self-check enabled; running...")
+        try:
+            result = await run_self_check()
+            logger.info(f"Startup self-check result: {result}")
+        except Exception as e:
+            logger.error(f"Startup self-check error: {e}")
+    if ENABLE_PERIODIC_SELF_CHECKS:
+        async def _loop():
+            while True:
+                try:
+                    logger.info("Periodic self-check running...")
+                    result = await run_self_check()
+                    logger.info(f"Periodic self-check result: {result}")
+                except Exception as e:
+                    logger.error(f"Periodic self-check error: {e}")
+                await asyncio.sleep(SELF_CHECK_INTERVAL_SECONDS)
+        asyncio.create_task(_loop())
+
 @app.get("/")
 async def root():
     """Health check endpoint"""
@@ -40,6 +128,25 @@ async def root():
             "POST /receive_request": "Submit a quiz task"
         }
     }
+
+@app.get("/self_check")
+async def self_check(background_tasks: BackgroundTasks, enqueue_demo: bool = True):
+    result = await run_self_check()
+    if enqueue_demo:
+        email = os.getenv("EMAIL")
+        secret = os.getenv("SECRET_KEY")
+        if email and secret and SELF_TEST_DEMO_URL:
+            logger.info(f"Enqueuing demo quiz as part of self_check: {SELF_TEST_DEMO_URL}")
+            background_tasks.add_task(
+                solve_quiz_task,
+                email=email,
+                secret=secret,
+                url=SELF_TEST_DEMO_URL
+            )
+            result["demo_enqueued"] = True
+        else:
+            result["demo_enqueued"] = False
+    return JSONResponse(result)
 
 @app.post("/receive_request")
 async def receive_quiz_request(
