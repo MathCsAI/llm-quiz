@@ -62,6 +62,13 @@ python app.py
 
 The server will start on `http://localhost:7860`
 
+## Hugging Face Deployment (Concise)
+
+- Push this repo to a Hugging Face Space (Docker template).
+- Configure Space secrets: `EMAIL`, `SECRET_KEY`, `GEMINI_API_KEY`.
+- Build uses `Dockerfile` and `requirements.txt`.
+- Health check: POST to `/receive_request` with your email/secret and a demo URL.
+
 ### Hugging Face Spaces Deployment
 
 This application is configured for automatic deployment on Hugging Face Spaces.
