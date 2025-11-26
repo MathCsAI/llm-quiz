@@ -268,7 +268,7 @@ async def run_prompt_tests():
 
 
 if __name__ == "__main__":
-    print("⚠️  WARNING: This test will make multiple API calls to AI Pipe")
+    print("⚠️  WARNING: This test will make multiple API calls to Gemini")
     print("   Estimated: ~20-30 API calls")
     print()
     

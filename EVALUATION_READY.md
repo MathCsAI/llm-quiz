@@ -349,7 +349,7 @@ Your application is **fully ready** for evaluation:
 ### If quiz solving times out
 1. Increase timeout in quiz_solver.py (currently 150s)
 2. Check Playwright can access the URL
-3. Verify AI Pipe API token is valid
+3. Verify Gemini API key is valid
 4. Check LLM script generation is working
 
 ### If tests fail

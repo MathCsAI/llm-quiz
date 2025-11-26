@@ -59,7 +59,7 @@ After the first deployment, configure secrets in your HF Space:
 - Example: `your-secret-123`
 
 **AI_PIPE_TOKEN**
-- Your AI Pipe API token
+- Your Gemini API key
 - Get from: https://aipipe.ai/
 - Format: `sk-xxxxxxxxxxxxx`
 

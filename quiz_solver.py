@@ -7,6 +7,7 @@ import time
 import logging
 import subprocess
 import tempfile
+import asyncio
 from typing import Optional, Dict, Any
 import httpx
 from scraper import QuizScraper
@@ -91,30 +92,96 @@ class QuizSolver:
             logger.info(f"Calling Gemini API with model: {model}")
             
             async with httpx.AsyncClient(timeout=90.0) as client:
-                try:
-                    response = await client.post(
-                        api_url,
-                        headers=headers,
-                        json=payload
-                    )
-                except httpx.TimeoutException as e:
-                    logger.error(f"Timeout contacting Gemini API: {e}")
-                    return None
-                except Exception as e:
-                    logger.error(f"Network error contacting Gemini API: {type(e).__name__}: {e}")
-                    return None
+                attempt = 0
+                while attempt < 2:  # one retry allowed for rate-limit
+                    attempt += 1
+                    try:
+                        response = await client.post(
+                            api_url,
+                            headers=headers,
+                            json=payload
+                        )
+                    except httpx.TimeoutException as e:
+                        logger.error(f"Timeout contacting Gemini API: {e}")
+                        return None
+                    except Exception as e:
+                        logger.error(f"Network error contacting Gemini API: {type(e).__name__}: {e}")
+                        return None
 
-                logger.info(f"API Response Status: {response.status_code}")
-                if response.status_code != 200:
-                    logger.error(f"Gemini API Error: {response.status_code} - {response.text}")
-                    return None
+                    logger.info(f"API Response Status: {response.status_code}")
+                    if response.status_code == 429:
+                        # Parse retry delay if provided
+                        try:
+                            data = response.json()
+                            retry_info = None
+                            for det in data.get("error", {}).get("details", []):
+                                if det.get("@type", "").endswith("RetryInfo"):
+                                    retry_info = det
+                                    break
+                            delay_raw = retry_info.get("retryDelay") if retry_info else None
+                            delay_secs = None
+                            if delay_raw:
+                                # retryDelay like '54s'
+                                if delay_raw.endswith('s') and delay_raw[:-1].isdigit():
+                                    delay_secs = int(delay_raw[:-1])
+                            if delay_secs is None:
+                                delay_secs = 10  # default small backoff
+                            elapsed = time.time() - self.start_time
+                            remaining = MAX_TOTAL_TIME - elapsed
+                            if remaining <= delay_secs + 5:  # not enough time to wait+generate
+                                logger.warning(f"Not enough time to wait {delay_secs}s for retry; aborting model {model}")
+                                return None
+                            logger.warning(f"Rate limited (429). Waiting {delay_secs}s before retry (attempt {attempt})")
+                            await asyncio.sleep(delay_secs)
+                            continue  # retry loop
+                        except Exception as e:  # noqa: BLE001
+                            logger.error(f"Failed to parse 429 retry info: {type(e).__name__}: {e}")
+                            return None
+                    if response.status_code != 200:
+                        logger.error(f"Gemini API Error: {response.status_code} - {response.text}")
+                        return None
+                    break  # successful 200
 
                 result = response.json()
-                if "candidates" not in result or not result.get("candidates"):
-                    logger.error(f"Invalid Gemini API response: {result}")
+
+                # Basic structural validation
+                candidates = result.get("candidates", []) or []
+                if not candidates:
+                    logger.error(f"Invalid Gemini API response (no candidates): {result}")
                     return None
 
-                content = result["candidates"][0]["content"]["parts"][0]["text"]
+                # Robust extraction of text parts
+                def extract_text(r: Dict[str, Any]) -> Optional[str]:
+                    try:
+                        for cand in r.get("candidates", []):
+                            content_obj = cand.get("content", {}) or {}
+                            parts = content_obj.get("parts")
+                            if isinstance(parts, list):
+                                for part in parts:
+                                    # Common field
+                                    if isinstance(part, dict) and "text" in part and part["text"]:
+                                        return part["text"]
+                                    # Sometimes inlineData may appear (ignore for now unless no text)
+                                    if isinstance(part, dict) and "inlineData" in part:
+                                        data = part["inlineData"].get("data")
+                                        if data:
+                                            return data
+                            # Fallback: if parts missing but content has direct text
+                            if "text" in content_obj:
+                                return content_obj.get("text")
+                            # Some experimental responses may put text directly in candidate
+                            if "output" in cand and isinstance(cand["output"], str):
+                                return cand["output"]
+                        return None
+                    except Exception as e:  # noqa: BLE001
+                        logger.error(f"Error extracting text from Gemini response: {type(e).__name__}: {e}")
+                        return None
+
+                content = extract_text(result)
+                if not content:
+                    logger.error(f"Unable to extract 'text' from Gemini response: {result}")
+                    return None
+
                 logger.info(f"LLM response received ({len(content)} chars)")
                 return content
                 
@@ -245,6 +312,36 @@ class QuizSolver:
                     script_code = script_code.split("```python")[1].split("```")[0].strip()
                 elif "```" in script_code:
                     script_code = script_code.split("```")[1].split("```")[0].strip()
+
+                # Sanitize and validate generated script to reduce trivial syntax errors
+                def sanitize_script(code: str) -> str:
+                    cleaned = code.strip()
+                    # Remove leading stray backticks
+                    while cleaned.startswith("`"):
+                        cleaned = cleaned[1:].lstrip()
+                    # Ensure logging format strings are closed if truncated
+                    lines = cleaned.splitlines()
+                    for i, line in enumerate(lines):
+                        if "format=" in line and "%(message)" in line and line.count("'") % 2 == 1:
+                            # Add closing quote at end of line if clearly unterminated
+                            lines[i] = line + "'"
+                    candidate = "\n".join(lines)
+                    # Attempt compile; if unterminated string literal, try auto-fix by closing last quote
+                    import ast
+                    try:
+                        ast.parse(candidate)
+                        return candidate
+                    except SyntaxError as se:  # noqa: BLE001
+                        if "unterminated string literal" in str(se):
+                            candidate += "'"  # append a quote
+                            try:
+                                ast.parse(candidate)
+                                return candidate
+                            except Exception:  # noqa: BLE001
+                                return code  # fall back to original
+                        return code
+
+                script_code = sanitize_script(script_code)
                 
                 # Step 3: Save and execute the script
                 logger.info("Step 3: Executing generated script...")

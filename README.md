@@ -11,7 +11,7 @@ license: mit
 
 # LLM Quiz Solver
 
-An intelligent application that automatically solves data analysis quizzes using Large Language Models (LLMs) and AI Pipe API. The system receives quiz tasks via API endpoint, generates Python scripts to solve them, and submits answers autonomously.
+An intelligent application that automatically solves data analysis quizzes using Large Language Models (LLMs) and Gemini API. The system receives quiz tasks via API endpoint, generates Python scripts to solve them, and submits answers autonomously.
 
 ## 🚀 Features
 
@@ -26,7 +26,7 @@ An intelligent application that automatically solves data analysis quizzes using
 ## 📋 Requirements
 
 - Python 3.11+
-- AI Pipe API token
+- Gemini API key
 - Playwright (with Chromium)
 - FastAPI and dependencies
 
@@ -52,7 +52,7 @@ cp .env.example .env
 # Edit .env with your credentials:
 # - EMAIL: Your email address
 # - SECRET_KEY: Your secret string
-# - AI_PIPE_TOKEN: Your AI Pipe API token
+# - GEMINI_API_KEY: Your Gemini API key
 ```
 
 4. **Run the server**
@@ -69,7 +69,7 @@ This application is configured for automatic deployment on Hugging Face Spaces.
 **Required Secrets** (Configure in Space Settings → Repository secrets):
 - `EMAIL`: Your email address from Google Form
 - `SECRET_KEY`: Your secret string from Google Form
-- `AI_PIPE_TOKEN`: Your AI Pipe API token from https://aipipe.ai/
+- `GEMINI_API_KEY`: Your Gemini API key from Google AI Studio
 
 The Docker container will automatically build and deploy when you push to the Space.
 
@@ -149,7 +149,7 @@ curl -X POST http://localhost:7860/receive_request \
 |----------|-------------|----------|
 | `EMAIL` | Student email address | Yes |
 | `SECRET_KEY` | Secret string for authentication | Yes |
-| `AI_PIPE_TOKEN` | AI Pipe API token | Yes |
+| `GEMINI_API_KEY` | Gemini API key | Yes |
 | `PORT` | Server port (default: 7860) | No |
 
 ### AI Models

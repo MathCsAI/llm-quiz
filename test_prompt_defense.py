@@ -16,7 +16,7 @@ import os
 import random
 from prompts import SYSTEM_PROMPT_DEFENSE, USER_PROMPT_ATTACK
 
-# AI Pipe API configuration
+# Gemini API configuration
 GEMINI_API_URL = "https://aipipe.ai/v1/chat/completions"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM4NThAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Lsap03tUtUxz3_rF2c4EQpByfAegYVp0JdllPE_bPKc")
 MODEL = "gemini-1.5-flash"

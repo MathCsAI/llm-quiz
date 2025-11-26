@@ -77,7 +77,7 @@ Health check endpoint.
 |----------|-------------|----------|
 | EMAIL | Student email | Yes |
 | SECRET_KEY | Authentication secret | Yes |
-| AI_PIPE_TOKEN | AI Pipe API token | Yes |
+| GEMINI_API_KEY | Gemini API key | Yes |
 | PORT | Server port (default: 7860) | No |
 
 ## Test Quiz
