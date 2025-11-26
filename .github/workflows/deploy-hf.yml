@@ -1,0 +1,39 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+      
+      - name: Push to Hugging Face Space
+        env:
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          # Add Hugging Face remote
+          git remote add hf https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/llm-quiz-solver || true
+          
+          # Push to Hugging Face
+          git push hf main:main --force
+      
+      - name: Deployment Status
+        run: |
+          echo "✅ Successfully deployed to Hugging Face Spaces"
+          echo "🔗 Space URL: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/llm-quiz-solver"
+          echo "🚀 Your API endpoint will be available at:"
+          echo "   https://${{ secrets.HF_USERNAME }}-llm-quiz-solver.hf.space/receive_request"
