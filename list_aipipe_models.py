@@ -2,27 +2,23 @@
 import os
 import httpx
 
-ENDPOINTS = [
-    os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.org/openrouter/v1/models"),
-    "https://aipipe.ai/openai/v1/models",
-    "https://aipipe.ai/v1/models",
-]
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 def main():
-    token = os.getenv("AI_PIPE_TOKEN")
-    if not token:
-        print("AI_PIPE_TOKEN not set in environment")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("GEMINI_API_KEY not set in environment")
         return 1
-    headers = {"Authorization": f"Bearer {token}"}
-    for url in ENDPOINTS:
-        try:
-            print(f"Querying: {url}")
-            with httpx.Client(timeout=10.0) as client:
-                r = client.get(url, headers=headers)
-                print(f"Status: {r.status_code}")
-                print(r.text[:2000])
-        except Exception as e:
-            print(f"Error contacting {url}: {e}")
+    
+    url = f"{GEMINI_API_URL}?key={api_key}"
+    try:
+        print(f"Querying: {GEMINI_API_URL}")
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(url)
+            print(f"Status: {r.status_code}")
+            print(r.text[:2000])
+    except Exception as e:
+        print(f"Error contacting Gemini API: {e}")
     return 0
 
 if __name__ == "__main__":

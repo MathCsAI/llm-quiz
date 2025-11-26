@@ -484,7 +484,7 @@ async def main():
     print()
     print("3. If you see 'Timeout' or 'Error' messages:")
     print("   - Check AI_PIPE_TOKEN is valid")
-    print("   - Verify aipipe.ai API is responding")
+    print("   - Verify generativelanguage.googleapis.com API is responding")
     print("   - Check model 'gpt-4o-mini' is available")
     print()
     print("="*80)

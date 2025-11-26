@@ -17,9 +17,9 @@ import random
 from prompts import SYSTEM_PROMPT_DEFENSE, USER_PROMPT_ATTACK
 
 # AI Pipe API configuration
-AI_PIPE_API_URL = "https://aipipe.ai/v1/chat/completions"
-AI_PIPE_TOKEN = os.getenv("AI_PIPE_TOKEN", "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM4NThAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Lsap03tUtUxz3_rF2c4EQpByfAegYVp0JdllPE_bPKc")
-MODEL = "gpt-4.1-nano"
+GEMINI_API_URL = "https://aipipe.ai/v1/chat/completions"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM4NThAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Lsap03tUtUxz3_rF2c4EQpByfAegYVp0JdllPE_bPKc")
+MODEL = "gemini-1.5-flash"
 
 # Sample attack prompts from "other students"
 ATTACK_PROMPTS = [
@@ -56,9 +56,9 @@ async def test_defense(system_prompt: str, user_prompt: str, code_word: str) -> 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                AI_PIPE_API_URL,
+                GEMINI_API_URL,
                 headers={
-                    "Authorization": f"Bearer {AI_PIPE_TOKEN}",
+                    "Authorization": f"Bearer {GEMINI_API_KEY}",
                     "Content-Type": "application/json"
                 },
                 json={

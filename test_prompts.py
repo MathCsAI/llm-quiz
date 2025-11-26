@@ -9,9 +9,9 @@ import asyncio
 from typing import Dict, Any
 
 # Configuration
-AI_PIPE_API_URL = "https://aipipe.ai/v1/chat/completions"
-AI_PIPE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM4NThAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Lsap03tUtUxz3_rF2c4EQpByfAegYVp0JdllPE_bPKc"
-MODEL = "gpt-4.1-nano"
+GEMINI_API_URL = "https://aipipe.ai/v1/chat/completions"
+GEMINI_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM4NThAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Lsap03tUtUxz3_rF2c4EQpByfAegYVp0JdllPE_bPKc"
+MODEL = "gemini-1.5-flash"
 
 # Test code words
 CODE_WORDS = ["elephant", "giraffe", "volcano", "rainbow", "whisper"]
@@ -42,9 +42,9 @@ async def test_defense_prompt(system_prompt: str, code_word: str) -> Dict[str, A
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    AI_PIPE_API_URL,
+                    GEMINI_API_URL,
                     headers={
-                        "Authorization": f"Bearer {AI_PIPE_TOKEN}",
+                        "Authorization": f"Bearer {GEMINI_API_KEY}",
                         "Content-Type": "application/json"
                     },
                     json={
@@ -120,9 +120,9 @@ async def test_attack_prompt(user_prompt: str, code_word: str) -> Dict[str, Any]
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    AI_PIPE_API_URL,
+                    GEMINI_API_URL,
                     headers={
-                        "Authorization": f"Bearer {AI_PIPE_TOKEN}",
+                        "Authorization": f"Bearer {GEMINI_API_KEY}",
                         "Content-Type": "application/json"
                     },
                     json={

@@ -14,19 +14,11 @@ from prompts import get_script_generation_prompt, SYSTEM_PROMPT_DEFENSE, USER_PR
 
 logger = logging.getLogger(__name__)
 
-# AI Pipe API Configuration
-# Prefer AI Pipe OpenRouter proxy, with fallbacks to previous AI Pipe OpenAI-compatible endpoints.
-AI_PIPE_API_URL = os.getenv("AI_PIPE_API_URL", "").strip() or "https://aipipe.org/openrouter/v1/chat/completions"
-AI_PIPE_API_FALLBACKS = [
-    AI_PIPE_API_URL,
-    "https://aipipe.ai/openai/v1/chat/completions",
-    "https://aipipe.ai/v1/chat/completions",
-]
+# Gemini API Configuration
+GEMINI_API_URL = os.getenv("GEMINI_API_URL", "").strip() or "https://generativelanguage.googleapis.com/v1beta/models"
 # Model configuration (override via env)
-# Keep default as "gpt-4.1-nano" to satisfy local checks; when using OpenRouter endpoint,
-# we will auto-prefix provider (e.g., "openai/") if missing.
-DEFAULT_MODEL = os.getenv("AI_PIPE_MODEL", "gpt-4.1-nano").strip()
-_fallback_env = os.getenv("AI_PIPE_FALLBACK_MODELS", "gpt-4.1-mini,gpt-4.1-nano").strip()
+DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+_fallback_env = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.5-pro,gemini-3-pro-preview").strip()
 FALLBACK_MODELS = [m.strip() for m in _fallback_env.split(',') if m.strip()]
 
 # Time limits
@@ -39,9 +31,9 @@ class QuizSolver:
     def __init__(self, email: str, secret: str):
         self.email = email
         self.secret = secret
-        self.ai_pipe_token = os.getenv("AI_PIPE_TOKEN")
-        if not self.ai_pipe_token:
-            raise ValueError("AI_PIPE_TOKEN not found in environment")
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if not self.gemini_api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment")
         
         self.scraper = QuizScraper()
         self.start_time = time.time()
@@ -64,7 +56,7 @@ class QuizSolver:
         max_tokens: int = 4000
     ) -> Optional[str]:
         """
-        Call AI Pipe API to get LLM response
+        Call Gemini API to get LLM response
         
         Args:
             prompt: User prompt
@@ -77,75 +69,63 @@ class QuizSolver:
         """
         try:
             headers = {
-                "Authorization": f"Bearer {self.ai_pipe_token}",
                 "Content-Type": "application/json"
             }
             
-            messages = []
+            # Build Gemini API request
+            contents = []
             if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
+                contents.append({"role": "user", "parts": [{"text": system_prompt}]})
+                contents.append({"role": "model", "parts": [{"text": "Understood."}]})
+            contents.append({"role": "user", "parts": [{"text": prompt}]})
             
-            # Iterate through endpoints; optionally omit model entirely if configured.
-            omit_model = os.getenv("AI_PIPE_OMIT_MODEL", "false").lower() == "true"
+            payload = {
+                "contents": contents,
+                "generationConfig": {
+                    "maxOutputTokens": max_tokens,
+                    "temperature": 0.7
+                }
+            }
             
-            endpoints_tried = []
+            api_url = f"{GEMINI_API_URL}/{model}:generateContent?key={self.gemini_api_key}"
+            logger.info(f"Calling Gemini API with model: {model}")
+            
             async with httpx.AsyncClient(timeout=90.0) as client:
-                for api_url in [u for i, u in enumerate(AI_PIPE_API_FALLBACKS) if u and u not in AI_PIPE_API_FALLBACKS[:i]]:
-                    endpoints_tried.append(api_url)
-                    payload = {
-                        "messages": messages,
-                        "max_tokens": max_tokens,
-                        "temperature": 0.7
-                    }
-                    adj_model = None
-                    if not omit_model and model:
-                        adj_model = model
-                        if "aipipe.org/openrouter" in api_url and "/" not in adj_model:
-                            adj_model = f"openai/{adj_model}"
-                        payload["model"] = adj_model
-                        logger.info(f"Calling AI Pipe API with model: {adj_model} @ {api_url}")
-                    else:
-                        logger.info(f"Calling AI Pipe API without explicit model @ {api_url}")
-                    try:
-                        response = await client.post(
-                            api_url,
-                            headers=headers,
-                            json=payload
-                        )
-                    except httpx.TimeoutException as e:
-                        logger.error(f"Timeout contacting {api_url}: {e}")
-                        continue
-                    except Exception as e:
-                        logger.error(f"Network error contacting {api_url}: {type(e).__name__}: {e}")
-                        continue
+                try:
+                    response = await client.post(
+                        api_url,
+                        headers=headers,
+                        json=payload
+                    )
+                except httpx.TimeoutException as e:
+                    logger.error(f"Timeout contacting Gemini API: {e}")
+                    return None
+                except Exception as e:
+                    logger.error(f"Network error contacting Gemini API: {type(e).__name__}: {e}")
+                    return None
 
-                    logger.info(f"API Response Status: {response.status_code}")
-                    if response.status_code != 200:
-                        logger.error(f"API Error from {api_url}: {response.status_code} - {response.text}")
-                        # Try next endpoint if available
-                        continue
+                logger.info(f"API Response Status: {response.status_code}")
+                if response.status_code != 200:
+                    logger.error(f"Gemini API Error: {response.status_code} - {response.text}")
+                    return None
 
-                    result = response.json()
-                    if "choices" not in result or not result.get("choices"):
-                        logger.error(f"Invalid API response from {api_url}: {result}")
-                        continue
+                result = response.json()
+                if "candidates" not in result or not result.get("candidates"):
+                    logger.error(f"Invalid Gemini API response: {result}")
+                    return None
 
-                    content = result["choices"][0]["message"]["content"]
-                    logger.info(f"LLM response received ({len(content)} chars)")
-                    return content
-
-            logger.error(f"All AI Pipe endpoints failed: {endpoints_tried}")
-            return None
+                content = result["candidates"][0]["content"]["parts"][0]["text"]
+                logger.info(f"LLM response received ({len(content)} chars)")
+                return content
                 
         except httpx.TimeoutException as e:
-            logger.error(f"Timeout calling LLM with model {model}: {e}")
+            logger.error(f"Timeout calling Gemini with model {model}: {e}")
             return None
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling LLM with model {model}: {e.response.status_code} - {e.response.text}")
+            logger.error(f"HTTP error calling Gemini with model {model}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"Error calling LLM with model {model}: {type(e).__name__} - {e}")
+            logger.error(f"Error calling Gemini with model {model}: {type(e).__name__} - {e}")
             import traceback
             logger.error(traceback.format_exc())
             return None
@@ -163,7 +143,7 @@ class QuizSolver:
         try:
             # Prepare environment with all necessary tokens
             env = os.environ.copy()
-            env["AI_PIPE_TOKEN"] = self.ai_pipe_token
+            env["GEMINI_API_KEY"] = self.gemini_api_key
             env["EMAIL"] = self.email
             env["SECRET_KEY"] = self.secret
             

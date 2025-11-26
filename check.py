@@ -95,34 +95,34 @@ def check_configuration():
     print()
     
     try:
-        from quiz_solver import DEFAULT_MODEL, FALLBACK_MODELS, AI_PIPE_API_URL
+        from quiz_solver import DEFAULT_MODEL, FALLBACK_MODELS, GEMINI_API_URL
         
         print(f"🤖 Model Configuration:")
         print(f"   Default Model: {DEFAULT_MODEL}")
         print(f"   Fallback Models: {FALLBACK_MODELS}")
         print()
         
-        # Check model is gpt-4.1-nano as required
-        correct_model = DEFAULT_MODEL == "gpt-4.1-nano"
-        correct_fallback = "gpt-4.1-nano" in FALLBACK_MODELS
+        # Check model is gemini-1.5-flash as required
+        correct_model = "gemini" in DEFAULT_MODEL.lower()
+        correct_fallback = any("gemini" in m.lower() for m in FALLBACK_MODELS)
         
         if correct_model:
-            print(f"   ✅ PASS - Using required model (gpt-4.1-nano)")
+            print(f"   ✅ PASS - Using Gemini model")
         else:
-            print(f"   ❌ FAIL - Wrong model (should be gpt-4.1-nano)")
+            print(f"   ❌ FAIL - Wrong model (should use Gemini)")
         
         if correct_fallback:
-            print(f"   ✅ PASS - Fallback includes gpt-4.1-nano")
+            print(f"   ✅ PASS - Fallback includes Gemini models")
         else:
-            print(f"   ❌ FAIL - Fallback should include gpt-4.1-nano")
+            print(f"   ❌ FAIL - Fallback should include Gemini models")
         print()
         
         print(f"🔗 API Configuration:")
-        print(f"   Endpoint: {AI_PIPE_API_URL}")
+        print(f"   Endpoint: {GEMINI_API_URL}")
         
-        correct_url = ("aipipe.ai" in AI_PIPE_API_URL) or ("aipipe.org" in AI_PIPE_API_URL)
+        correct_url = ("generativelanguage.googleapis.com" in GEMINI_API_URL) or ("generativelanguage.googleapis.com" in GEMINI_API_URL)
         if correct_url:
-            print(f"   ✅ PASS - Using correct API endpoint")
+            print(f"   ✅ PASS - Using correct Gemini API endpoint")
         else:
             print(f"   ❌ FAIL - Wrong API endpoint")
         print()
@@ -298,7 +298,7 @@ def main():
     print()
     print("This checks if your app is ready for evaluation:")
     print("  ✅ Prompt constraints (≤100 chars)")
-    print("  ✅ Correct model (gpt-4.1-nano)")
+    print("  ✅ Correct model (gemini-1.5-flash)")
     print("  ✅ FastAPI endpoint structure")
     print("  ✅ Quiz solver implementation")
     print("  ✅ Dockerfile configuration")

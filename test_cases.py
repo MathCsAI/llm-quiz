@@ -56,13 +56,13 @@ class TestCases:
     async def test_local_config(self):
         """Test 2: Verify configuration is correct"""
         try:
-            from quiz_solver import DEFAULT_MODEL, FALLBACK_MODELS, AI_PIPE_API_URL
+            from quiz_solver import DEFAULT_MODEL, FALLBACK_MODELS, GEMINI_API_URL
             
             # Validate we have a non-empty model and correct API host
             assert isinstance(DEFAULT_MODEL, str) and len(DEFAULT_MODEL) > 0, "DEFAULT_MODEL is empty"
-            assert ("aipipe.ai" in AI_PIPE_API_URL) or ("aipipe.org" in AI_PIPE_API_URL), f"Wrong API URL: {AI_PIPE_API_URL}"
+            assert ("generativelanguage.googleapis.com" in GEMINI_API_URL) or ("generativelanguage.googleapis.com" in GEMINI_API_URL), f"Wrong API URL: {GEMINI_API_URL}"
             
-            self.log_result("Configuration Validation", True, f"API: {AI_PIPE_API_URL}")
+            self.log_result("Configuration Validation", True, f"API: {GEMINI_API_URL}")
         except Exception as e:
             self.log_result("Configuration Validation", False, str(e))
     
@@ -100,7 +100,7 @@ class TestCases:
             
             assert solver.email == self.email
             assert solver.secret == self.secret
-            assert solver.ai_pipe_token is not None
+            assert solver.gemini_api_key is not None
             
             self.log_result("QuizSolver Initialization", True)
         except Exception as e:

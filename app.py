@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, HttpUrl
 import logging
 
-from quiz_solver import solve_quiz_task, QuizSolver, DEFAULT_MODEL, AI_PIPE_API_FALLBACKS
+from quiz_solver import solve_quiz_task, QuizSolver, DEFAULT_MODEL, GEMINI_API_URL
 
 # Configure logging
 logging.basicConfig(
@@ -35,44 +35,39 @@ ENABLE_STARTUP_SELF_CHECK = os.getenv("ENABLE_STARTUP_SELF_CHECK", "true").lower
 ENABLE_PERIODIC_SELF_CHECKS = os.getenv("ENABLE_PERIODIC_SELF_CHECKS", "false").lower() == "true"
 SELF_CHECK_INTERVAL_SECONDS = int(os.getenv("SELF_CHECK_INTERVAL_SECONDS", "900"))
 
-async def _probe_aipipe_models() -> dict:
-    token = os.getenv("AI_PIPE_TOKEN")
+async def _probe_gemini_models() -> dict:
+    api_key = os.getenv("GEMINI_API_KEY")
     results = {"attempts": []}
-    if not token:
-        logger.warning("AI_PIPE_TOKEN not set; skipping models probe")
+    if not api_key:
+        logger.warning("GEMINI_API_KEY not set; skipping models probe")
         results["skipped"] = True
         return results
-    headers = {"Authorization": f"Bearer {token}"}
-    model_urls = [
-        os.getenv("AI_PIPE_MODELS_URL", "https://aipipe.org/openrouter/v1/models"),
-        "https://aipipe.ai/openai/v1/models",
-        "https://aipipe.ai/v1/models",
-    ]
+    
+    model_url = f"{GEMINI_API_URL}?key={api_key}"
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for url in model_urls:
-            try:
-                resp = await client.get(url, headers=headers)
-                results["attempts"].append({
-                    "url": url,
-                    "status": resp.status_code,
-                    "ok": resp.status_code == 200
-                })
-            except Exception as e:
-                results["attempts"].append({
-                    "url": url,
-                    "error": str(e)
-                })
+        try:
+            resp = await client.get(model_url)
+            results["attempts"].append({
+                "url": model_url.split('?')[0],
+                "status": resp.status_code,
+                "ok": resp.status_code == 200
+            })
+        except Exception as e:
+            results["attempts"].append({
+                "url": GEMINI_API_URL,
+                "error": str(e)
+            })
     return results
 
 async def run_self_check() -> dict:
     summary = {
         "health": "ok",
         "model": DEFAULT_MODEL,
-        "aipipe_endpoints": AI_PIPE_API_FALLBACKS,
+        "gemini_api_url": GEMINI_API_URL,
     }
     # Probe models endpoint(s)
-    models_probe = await _probe_aipipe_models()
-    logger.info(f"AI Pipe models probe: {models_probe}")
+    models_probe = await _probe_gemini_models()
+    logger.info(f"Gemini models probe: {models_probe}")
     summary["models_probe"] = models_probe
     # Try a minimal LLM call
     try:
