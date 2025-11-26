@@ -194,6 +194,32 @@ curl -X POST http://localhost:7860/receive_request \
   }'
 ```
 
+## 🧰 Demo Fetch Utility
+
+Use a resilient fetch against the demo scrape endpoint. It detects `content-type` and avoids JSON decode errors on HTML responses.
+
+### Quick Start
+
+```bash
+python3 demo_fetch.py
+```
+
+- Optional: pass a custom URL
+
+```bash
+python3 demo_fetch.py "https://tds-llm-analysis.s-anand.net/demo-scrape-data?email=alice%40example.com&id=12345"
+```
+
+### Output
+
+- Prints `content-type`.
+- If JSON, prints parsed JSON.
+- Otherwise, prints a preview of the raw text body.
+
+### Notes
+
+- The endpoint currently returns HTML with a `<script src="demo-scrape.js" type="module"></script>` tag. If you need to execute that script to extract data, prefer using Playwright to load the page and read from the DOM.
+
 ## 📊 Quiz Capabilities
 
 The system can handle:

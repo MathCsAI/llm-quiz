@@ -11,6 +11,8 @@ import random
 import time
 import httpx
 import argparse
+import csv
+from pathlib import Path
 
 HF_ENDPOINT = "https://mathcsai-llm-quiz-solver.hf.space"
 EMAIL = "23f2003858@ds.study.iitm.ac.in"
@@ -39,6 +41,7 @@ async def main():
     parser.add_argument("--requests", type=int, default=12, help="Total number of requests")
     parser.add_argument("--max-jitter", type=float, default=4.0, help="Max random start delay in seconds")
     parser.add_argument("--waves", type=int, default=1, help="Number of waves (batches)")
+    parser.add_argument("--csv", type=str, default="", help="Optional CSV output path")
     args = parser.parse_args()
 
     per_wave = args.requests // args.waves
@@ -74,6 +77,26 @@ async def main():
         print("  Errors:")
         for r in errors:
             print(f"    - #{r['id']} status={r.get('status')} delay={r['delay']:.2f}s error={r.get('error','')}")
+
+    # Optional CSV output
+    if args.csv:
+        out_path = Path(args.csv)
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with out_path.open("w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=["id", "status", "latency", "delay", "error"])
+                writer.writeheader()
+                for r in all_results:
+                    writer.writerow({
+                        "id": r.get("id"),
+                        "status": r.get("status"),
+                        "latency": r.get("latency"),
+                        "delay": r.get("delay"),
+                        "error": r.get("error", "")
+                    })
+            print(f"\nCSV written to: {out_path}")
+        except Exception as e:  # noqa: BLE001
+            print(f"\nFailed to write CSV: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
