@@ -218,22 +218,33 @@ class QuizSolver:
                     if success:
                         logger.info(f"Quiz #{quiz_count} solved successfully!")
                         # Parse output for next URL
-                        # The script should print the next URL if available
-                        if "url" in output.lower() and "http" in output:
-                            # Extract next URL from output
-                            lines = output.split('\n')
-                            for line in lines:
-                                if "next" in line.lower() and "http" in line:
-                                    # Simple extraction, can be improved
-                                    import re
-                                    urls = re.findall(r'https?://[^\s<>"]+', line)
-                                    if urls:
-                                        current_url = urls[0]
-                                        logger.info(f"Found next URL: {current_url}")
-                                        break
-                            else:
-                                current_url = None
+                        # Look for patterns like: NEXT_URL: <url>, "url": "<url>", or just URLs
+                        import re
+                        current_url = None
+                        
+                        # Try to find NEXT_URL: pattern first (most explicit)
+                        next_url_match = re.search(r'NEXT_URL:\s*(https?://[^\s<>"]+)', output, re.IGNORECASE)
+                        if next_url_match:
+                            current_url = next_url_match.group(1)
+                            logger.info(f"Found next URL (explicit): {current_url}")
                         else:
+                            # Try to find "url": "..." pattern in JSON output
+                            json_url_match = re.search(r'"url"\s*:\s*"(https?://[^"]+)"', output)
+                            if json_url_match:
+                                current_url = json_url_match.group(1)
+                                logger.info(f"Found next URL (JSON): {current_url}")
+                            else:
+                                # Last resort: look for any line with "next" and a URL
+                                lines = output.split('\n')
+                                for line in lines:
+                                    if "next" in line.lower() and "http" in line:
+                                        urls = re.findall(r'https?://[^\s<>"]+', line)
+                                        if urls:
+                                            current_url = urls[0]
+                                            logger.info(f"Found next URL (fallback): {current_url}")
+                                            break
+                        
+                        if not current_url:
                             logger.info("No next URL found. Quiz chain complete!")
                             current_url = None
                     else:
