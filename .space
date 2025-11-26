@@ -1,6 +1,0 @@
-# Hugging Face Space Configuration
-# This file helps identify this as a HF Space
-
-space_name: llm-quiz-solver
-sdk: docker
-app_port: 7860
