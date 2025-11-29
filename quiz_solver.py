@@ -326,9 +326,25 @@ class QuizSolver:
                                 line = line.rstrip() + ":"
                                 fix_actions.append(f"added colon after fixing for-range at line {i+1}")
                         # Ensure logging format strings are closed if truncated
-                        if "format=" in line and "%(message)" in line and line.count("'") % 2 == 1:
-                            line = line + "'"
-                            fix_actions.append(f"closed unmatched quote in logging format at line {i+1}")
+                        if "logging.basicConfig" in line and "format=" in line:
+                            # Detect unterminated single-quoted format string
+                            fmt_part = line.split("format=", 1)[1]
+                            # Heuristic: if odd number of single quotes and no closing quote at end
+                            if fmt_part.count("'") % 2 == 1:
+                                # Attempt to complete with standard pattern
+                                if "%(message)s" not in fmt_part:
+                                    # Append missing segment and closing quote
+                                    if not fmt_part.rstrip().endswith("'"):
+                                        line = line.rstrip() + " - %(message)s'"
+                                else:
+                                    # Just close quote if pattern present but unterminated
+                                    if not fmt_part.rstrip().endswith("'"):
+                                        line = line.rstrip() + "'"
+                                fix_actions.append(f"repaired unterminated logging format at line {i+1}")
+                        # Generic unmatched quote closure for format= lines lacking %(message)s
+                        elif "format=" in line and line.count("'") % 2 == 1 and "%(message)" not in line:
+                            line = line + "%(message)s'"
+                            fix_actions.append(f"completed logging format with %(message)s at line {i+1}")
                         fixed_lines.append(line)
 
                     candidate = "\n".join(fixed_lines)
@@ -360,6 +376,16 @@ class QuizSolver:
                     # Try adding pass to lone block starters that still fail
                     lines2 = candidate.splitlines()
                     changed = False
+                    # Final sweep: repair any remaining unterminated logging format lines
+                    for j, ln in enumerate(lines2):
+                        if "logging.basicConfig" in ln and "format=" in ln:
+                            fmt = ln.split("format=", 1)[1]
+                            if fmt.count("'") % 2 == 1 and not fmt.rstrip().endswith("'"):
+                                if "%(message)s" not in fmt:
+                                    lines2[j] = ln.rstrip() + " - %(message)s'"
+                                else:
+                                    lines2[j] = ln.rstrip() + "'"
+                                fix_actions.append(f"final pass: closed logging format quote at line {j+1}")
                     for j, ln in enumerate(lines2):
                         st = ln.strip()
                         if any(st == kw + ":" for kw in ("if", "for", "while", "elif", "else", "try", "except", "finally")):
