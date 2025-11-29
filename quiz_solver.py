@@ -287,26 +287,46 @@ class QuizSolver:
                     # Remove leading stray backticks
                     while cleaned.startswith("`"):
                         cleaned = cleaned[1:].lstrip()
-                    # Ensure logging format strings are closed if truncated
                     lines = cleaned.splitlines()
-                    for i, line in enumerate(lines):
+                    # Heuristic fixes
+                    fixed_lines = []
+                    for line in lines:
+                        s = line.strip()
+                        # Remove bare identifiers that can break blocks (e.g., 'logging')
+                        if s in {"logging"}:
+                            continue
+                        # Ensure except/finally have a trailing colon
+                        if s.startswith("except") and not s.endswith(":"):
+                            line = line.rstrip() + ":"
+                        if s.startswith("finally") and not s.endswith(":"):
+                            line = line.rstrip() + ":"
+                        # Ensure logging format strings are closed if truncated
                         if "format=" in line and "%(message)" in line and line.count("'") % 2 == 1:
-                            # Add closing quote at end of line if clearly unterminated
-                            lines[i] = line + "'"
-                    candidate = "\n".join(lines)
-                    # Attempt compile; if unterminated string literal, try auto-fix by closing last quote
+                            line = line + "'"
+                        fixed_lines.append(line)
+                    candidate = "\n".join(fixed_lines)
+                    # Try compiling; on common SyntaxErrors, apply secondary fixes
                     import ast
                     try:
                         ast.parse(candidate)
                         return candidate
                     except SyntaxError as se:  # noqa: BLE001
-                        if "unterminated string literal" in str(se):
-                            candidate += "'"  # append a quote
+                        msg = str(se)
+                        # Attempt to fix missing colon in except/finally if not caught above
+                        if "expected ':'" in msg:
+                            tmp = []
+                            for ln in fixed_lines:
+                                st = ln.strip()
+                                if (st.startswith("except") or st.startswith("finally")) and not st.endswith(":"):
+                                    ln = ln.rstrip() + ":"
+                                tmp.append(ln)
+                            candidate2 = "\n".join(tmp)
                             try:
-                                ast.parse(candidate)
-                                return candidate
-                            except Exception:  # noqa: BLE001
-                                return code  # fall back to original
+                                ast.parse(candidate2)
+                                return candidate2
+                            except Exception:
+                                pass
+                        # If still failing, return original code to preserve output
                         return code
 
                 script_code = sanitize_script(script_code)
