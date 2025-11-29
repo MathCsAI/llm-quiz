@@ -46,6 +46,11 @@ Most recent runs:
 - Local suite: 4/4 PASS
 - HF comprehensive suite: 10/10 PASS (Health, validation errors, invalid JSON, method safeguards, concurrency, performance < 5s)
 
+## Release
+Tagged version: `v1.0-final`
+Reference commit: latest on `main` prior to tagging.
+Use this tag for reproducible evaluation.
+
 ## Log Indicators
 Expect to see:
 - `Scraping quiz page...`
