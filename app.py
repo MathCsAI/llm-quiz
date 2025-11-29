@@ -69,21 +69,27 @@ async def run_self_check() -> dict:
     models_probe = await _probe_gemini_models()
     logger.info(f"Gemini models probe: {models_probe}")
     summary["models_probe"] = models_probe
-    # Try a minimal LLM call
+    # Try a minimal LLM call (consider 200 status as success)
     try:
-        solver = QuizSolver(
-            email=os.getenv("EMAIL", "test@example.com"),
-            secret=os.getenv("SECRET_KEY", "secret")
-        )
-        content = await solver.call_llm("ping", model=DEFAULT_MODEL, max_tokens=10)
-        if content:
-            logger.info(f"Self-check LLM call succeeded: {len(content)} chars")
-            summary["llm_call"] = {"ok": True, "len": len(content)}
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            logger.warning("GEMINI_API_KEY not set; skipping LLM ping")
+            summary["llm_call"] = {"ok": False, "error": "missing_api_key"}
         else:
-            logger.warning("Self-check LLM call returned no content")
-            summary["llm_call"] = {"ok": False}
+            api_url = f"{GEMINI_API_URL}/{DEFAULT_MODEL}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"role": "user", "parts": [{"text": "ping"}]}],
+                "generationConfig": {"maxOutputTokens": 5, "temperature": 0.0}
+            }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(api_url, json=payload)
+                logger.info(f"Self-check LLM status: {resp.status_code}")
+                if resp.status_code == 200:
+                    summary["llm_call"] = {"ok": True, "status": 200}
+                else:
+                    summary["llm_call"] = {"ok": False, "status": resp.status_code}
     except Exception as e:
-        logger.error(f"Self-check LLM call failed: {e}")
+        logger.error(f"Self-check LLM ping failed: {e}")
         summary["llm_call"] = {"ok": False, "error": str(e)}
     return summary
 
