@@ -16,7 +16,7 @@ An intelligent application that automatically solves data analysis quizzes using
 ## 🚀 Features
 
 - **FastAPI Server**: High-performance async API endpoint
-- **LLM-Powered**: Uses GPT-4o-mini via AI Pipe for script generation
+- **LLM-Powered**: Uses Google Gemini (gemini-2.5-flash) for script generation
 - **JavaScript Rendering**: Playwright-based web scraping for dynamic content
 - **Automated Solving**: Handles data sourcing, preparation, analysis, and visualization
 - **Chain Processing**: Automatically follows quiz sequences
@@ -161,8 +161,8 @@ curl -X POST http://localhost:7860/receive_request \
 
 ### AI Models
 
-- **Primary**: `gpt-4o-mini` (fast and cost-effective)
-- **Fallback**: `gpt-4-turbo`, `claude-3-5-sonnet-20241022`
+- **Primary**: `gemini-2.5-flash` (fast and cost-effective)
+- **Fallback**: `gemini-2.5-pro`, `gemini-3-pro-preview`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-2.5-flash-lite`
 
 ## 🧪 Testing
 
@@ -201,31 +201,17 @@ curl -X POST http://localhost:7860/receive_request \
   }'
 ```
 
-## 🧰 Demo Fetch Utility
+## 🧹 Project Cleanup
 
-Use a resilient fetch against the demo scrape endpoint. It detects `content-type` and avoids JSON decode errors on HTML responses.
+The repository is streamlined to core components and tests. Legacy demo and stress scripts were removed to keep things tidy:
+- Removed: `TRIGGER.md`, `test_api_live.py`, `test_big_quiz_stress.py`, `test_multiple_quizzes.py`
+- Core tests: `test_cases.py` (local + HF), `test_comprehensive.py` (HF suite), `test_local.py` (env + init), `test_endpoint.py` (interactive local API)
 
-### Quick Start
+Cache folders like `__pycache__/` and `.pytest_cache/` are ignored by git and safe to delete locally.
 
-```bash
-python3 demo_fetch.py
-```
+## 🧰 Demo Notes
 
-- Optional: pass a custom URL
-
-```bash
-python3 demo_fetch.py "https://tds-llm-analysis.s-anand.net/demo-scrape-data?email=alice%40example.com&id=12345"
-```
-
-### Output
-
-- Prints `content-type`.
-- If JSON, prints parsed JSON.
-- Otherwise, prints a preview of the raw text body.
-
-### Notes
-
-- The endpoint currently returns HTML with a `<script src="demo-scrape.js" type="module"></script>` tag. If you need to execute that script to extract data, prefer using Playwright to load the page and read from the DOM.
+The demo scrape endpoint may return HTML. This application uses Playwright to render dynamic pages and extract the required data reliably.
 
 ## 📊 Quiz Capabilities
 
@@ -249,9 +235,9 @@ The system can handle:
 
 ### Common Issues
 
-**"AI_PIPE_TOKEN not found"**
-- Ensure `.env` file exists with valid token
-- For Hugging Face: Configure token in Space secrets
+**"GEMINI_API_KEY not found"**
+- Ensure `.env` file exists with valid key
+- For Hugging Face: Configure `GEMINI_API_KEY` in Space secrets
 
 **"Timeout fetching quiz"**
 - Check internet connectivity
@@ -323,9 +309,9 @@ MIT License - see LICENSE file
 
 ## 🔗 Links
 
-- **AI Pipe**: https://aipipe.ai/
 - **GitHub**: https://github.com/MathCsAI/llm-quiz
 - **Hugging Face Spaces**: Deploy and run this application
+- **Google AI Studio (Gemini)**: https://ai.google.dev/
 
 ## 📞 Support
 
@@ -336,4 +322,4 @@ For issues and questions:
 
 ---
 
-**Built with ❤️ using FastAPI, Playwright, and AI Pipe**
+**Built with ❤️ using FastAPI, Playwright, and Google Gemini**
