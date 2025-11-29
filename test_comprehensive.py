@@ -10,7 +10,11 @@ import json
 from datetime import datetime
 
 # Configuration
-HF_ENDPOINT = "https://mathcsai-llm-quiz-solver.hf.space"
+try:
+    from hf_utils import discover_hf_endpoint
+    HF_ENDPOINT = discover_hf_endpoint() or "https://mathcsai-llm-quiz-solver.hf.space"
+except Exception:
+    HF_ENDPOINT = "https://mathcsai-llm-quiz-solver.hf.space"
 EMAIL = "23f2003858@ds.study.iitm.ac.in"
 SECRET = "123456789"
 DEMO_QUIZ_URL = "https://tds-llm-analysis.s-anand.net/demo"

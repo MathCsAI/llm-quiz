@@ -76,7 +76,7 @@ python3 test_cases.py --hf-endpoint https://YOUR_USERNAME-llm-quiz-solver.hf.spa
 | Test | Purpose | Expected |
 |------|---------|----------|
 | Module Imports | Verify all modules load | All imports successful |
-| Configuration | Check model settings | gpt-4.1-nano configured |
+| Configuration | Gemini model configured | gemini-2.5-flash |
 | Prompt Constraints | Validate prompt lengths | Defense ≤100, Attack ≤100 |
 | QuizSolver Init | Test class initialization | Creates solver instance |
 
@@ -103,9 +103,9 @@ python3 test_cases.py --hf-endpoint https://YOUR_USERNAME-llm-quiz-solver.hf.spa
 ### 403 Forbidden (on valid request)
 **Issue:** Secrets not configured in HF Space  
 **Solution:** Add secrets in Space Settings → Repository secrets:
-- `EMAIL`: 23f2003858@ds.study.iitm.ac.in
-- `SECRET_KEY`: 12356789
-- `AI_PIPE_TOKEN`: Your AI Pipe token
+- `EMAIL`: your email
+- `SECRET_KEY`: your secret
+- `GEMINI_API_KEY`: your Gemini API key
 
 ### Tests Fail Locally
 **Issue:** Dependencies not installed  

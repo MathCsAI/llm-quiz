@@ -307,10 +307,16 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Test LLM Quiz Solver")
+    try:
+        from hf_utils import discover_hf_endpoint
+        default_endpoint = discover_hf_endpoint()
+    except Exception:
+        default_endpoint = None
+
     parser.add_argument(
         "--hf-endpoint",
         help="Hugging Face Spaces endpoint URL",
-        default=None
+        default=default_endpoint
     )
     parser.add_argument(
         "--local-only",

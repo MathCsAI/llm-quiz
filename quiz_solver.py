@@ -15,6 +15,13 @@ from prompts import get_script_generation_prompt, SYSTEM_PROMPT_DEFENSE, USER_PR
 
 logger = logging.getLogger(__name__)
 
+def _mask_email(email: str) -> str:
+    try:
+        local, domain = email.split('@', 1)
+        return (local[:3] + '***@' + domain) if local else '***@' + domain
+    except Exception:
+        return '***'
+
 # Gemini API Configuration
 GEMINI_API_URL = os.getenv("GEMINI_API_URL", "").strip() or "https://generativelanguage.googleapis.com/v1beta/models"
 # Model configuration (override via env)
@@ -283,51 +290,93 @@ class QuizSolver:
 
                 # Sanitize and validate generated script to reduce trivial syntax errors
                 def sanitize_script(code: str) -> str:
+                    import ast, re
+                    original = code
                     cleaned = code.strip()
+                    fix_actions = []
                     # Remove leading stray backticks
                     while cleaned.startswith("`"):
                         cleaned = cleaned[1:].lstrip()
+                        fix_actions.append("removed leading backtick")
                     lines = cleaned.splitlines()
-                    # Heuristic fixes
                     fixed_lines = []
-                    for line in lines:
+
+                    block_keywords = ("if", "for", "while", "elif", "else", "try", "except", "finally")
+                    for i, line in enumerate(lines):
                         s = line.strip()
-                        # Remove bare identifiers that can break blocks (e.g., 'logging')
+                        # Drop lone identifiers that cause syntax errors
                         if s in {"logging"}:
+                            fix_actions.append(f"removed stray identifier 'logging' at line {i+1}")
                             continue
-                        # Ensure except/finally have a trailing colon
-                        if s.startswith("except") and not s.endswith(":"):
-                            line = line.rstrip() + ":"
-                        if s.startswith("finally") and not s.endswith(":"):
-                            line = line.rstrip() + ":"
+                        # Fix missing colon for block starters
+                        if any(s.startswith(k) for k in block_keywords) and not s.endswith(":"):
+                            # Special case: lines like `if 'response'` -> add ': pass'
+                            if re.match(r"^if\s+['\"].+['\"]$", s):
+                                line = line.rstrip() + ":\n    pass"
+                                fix_actions.append(f"added colon + pass to literal if at line {i+1}")
+                            else:
+                                line = line.rstrip() + ":"
+                                fix_actions.append(f"added missing colon at line {i+1}")
+                        # Unclosed range( ... ) on for lines
+                        if s.startswith("for ") and "range(" in s and s.count("(") > s.count(")"):
+                            line = line + ")"  # add closing paren
+                            fix_actions.append(f"added closing parenthesis in for-range at line {i+1}")
+                            # Add colon if still missing
+                            if not line.rstrip().endswith(":"):
+                                line = line.rstrip() + ":"
+                                fix_actions.append(f"added colon after fixing for-range at line {i+1}")
                         # Ensure logging format strings are closed if truncated
                         if "format=" in line and "%(message)" in line and line.count("'") % 2 == 1:
                             line = line + "'"
+                            fix_actions.append(f"closed unmatched quote in logging format at line {i+1}")
                         fixed_lines.append(line)
+
                     candidate = "\n".join(fixed_lines)
-                    # Try compiling; on common SyntaxErrors, apply secondary fixes
-                    import ast
-                    try:
-                        ast.parse(candidate)
+
+                    def attempt_parse(src: str) -> bool:
+                        try:
+                            ast.parse(src)
+                            return True
+                        except SyntaxError:
+                            return False
+
+                    if attempt_parse(candidate):
+                        if fix_actions:
+                            logger.info(f"Script sanitizer applied fixes: {', '.join(fix_actions)}")
                         return candidate
-                    except SyntaxError as se:  # noqa: BLE001
-                        msg = str(se)
-                        # Attempt to fix missing colon in except/finally if not caught above
-                        if "expected ':'" in msg:
-                            tmp = []
-                            for ln in fixed_lines:
-                                st = ln.strip()
-                                if (st.startswith("except") or st.startswith("finally")) and not st.endswith(":"):
-                                    ln = ln.rstrip() + ":"
-                                tmp.append(ln)
-                            candidate2 = "\n".join(tmp)
-                            try:
-                                ast.parse(candidate2)
-                                return candidate2
-                            except Exception:
-                                pass
-                        # If still failing, return original code to preserve output
-                        return code
+
+                    # Secondary fixes for common patterns
+                    # Balance overall parentheses if globally unbalanced
+                    open_paren = candidate.count("(")
+                    close_paren = candidate.count(")")
+                    if open_paren > close_paren:
+                        deficit = open_paren - close_paren
+                        candidate += "\n" + ")" * deficit
+                        fix_actions.append(f"appended {deficit} closing parenthesis(es) at EOF")
+                        if attempt_parse(candidate):
+                            logger.info(f"Script sanitizer applied fixes: {', '.join(fix_actions)}")
+                            return candidate
+
+                    # Try adding pass to lone block starters that still fail
+                    lines2 = candidate.splitlines()
+                    changed = False
+                    for j, ln in enumerate(lines2):
+                        st = ln.strip()
+                        if any(st == kw + ":" for kw in ("if", "for", "while", "elif", "else", "try", "except", "finally")):
+                            lines2[j] = ln + "\n    pass"
+                            fix_actions.append(f"added pass to empty block starter at line {j+1}")
+                            changed = True
+                    if changed:
+                        candidate2 = "\n".join(lines2)
+                        if attempt_parse(candidate2):
+                            logger.info(f"Script sanitizer applied fixes: {', '.join(fix_actions)}")
+                            return candidate2
+
+                    # If still failing and we applied some fixes, log them
+                    if fix_actions:
+                        logger.info(f"Script sanitizer attempted fixes but script still invalid: {', '.join(fix_actions)}")
+                    # Return original to avoid introducing semantic changes
+                    return original
 
                 script_code = sanitize_script(script_code)
                 
@@ -407,7 +456,7 @@ def solve_quiz_task(email: str, secret: str, url: str):
     import asyncio
     
     try:
-        logger.info(f"Starting quiz solver for {email}")
+        logger.info(f"Starting quiz solver for {_mask_email(email)}")
         solver = QuizSolver(email=email, secret=secret)
         asyncio.run(solver.solve_quiz_chain(url))
         logger.info("Quiz solver completed successfully")

@@ -20,6 +20,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Redaction helpers
+def _mask_email(email: str) -> str:
+    try:
+        local, domain = email.split('@', 1)
+        return (local[:3] + '***@' + domain) if local else '***@' + domain
+    except Exception:
+        return '***'
+
+def _mask_secret(secret: str) -> str:
+    if not secret:
+        return '***'
+    if len(secret) <= 3:
+        return '*' * len(secret)
+    return '*' * (len(secret) - 3) + secret[-3:]
+
 # Request model
 class QuizRequest(BaseModel):
     email: EmailStr
@@ -194,17 +209,17 @@ async def receive_quiz_request(
             raise HTTPException(status_code=500, detail="Server configuration error")
         
         if payload["secret"] != expected_secret:
-            logger.warning(f"Invalid secret attempt for email: {payload['email']}")
+            logger.warning(f"Invalid secret attempt for email: {_mask_email(payload['email'])}")
             raise HTTPException(status_code=403, detail="Invalid secret key")
         
         # Validate email matches expected
         expected_email = os.getenv("EMAIL")
         if expected_email and payload["email"] != expected_email:
-            logger.warning(f"Email mismatch: {payload['email']} != {expected_email}")
+            logger.warning(f"Email mismatch: {_mask_email(payload['email'])} != {_mask_email(expected_email)}")
             raise HTTPException(status_code=403, detail="Invalid email")
         
         # Start background task to solve quiz
-        logger.info(f"Accepted quiz request for {payload['email']}: {payload['url']}")
+        logger.info(f"Accepted quiz request for {_mask_email(payload['email'])}: {payload['url']}")
         background_tasks.add_task(
             solve_quiz_task,
             email=payload["email"],

@@ -58,10 +58,10 @@ After the first deployment, configure secrets in your HF Space:
 - Your secret string from Google Form
 - Example: `your-secret-123`
 
-**AI_PIPE_TOKEN**
+**GEMINI_API_KEY**
 - Your Gemini API key
-- Get from: https://aipipe.ai/
-- Format: `sk-xxxxxxxxxxxxx`
+- Get from: https://ai.google.dev/
+- Format: `AIza...`
 
 ## How It Works
 
@@ -182,7 +182,7 @@ Expected response (200):
 - Verify `EMAIL` and `SECRET_KEY` match your submission
 
 **500 Internal Server Error**
-- Check `AI_PIPE_TOKEN` is configured
+- Check `GEMINI_API_KEY` is configured
 - View application logs in Space
 - Verify all dependencies are installed
 

@@ -17,9 +17,9 @@ import random
 from prompts import SYSTEM_PROMPT_DEFENSE, USER_PROMPT_ATTACK
 
 # Gemini API configuration
-GEMINI_API_URL = "https://aipipe.ai/v1/chat/completions"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM4NThAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Lsap03tUtUxz3_rF2c4EQpByfAegYVp0JdllPE_bPKc")
-MODEL = "gemini-1.5-flash"
+GEMINI_API_URL = os.getenv("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta/models")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # Sample attack prompts from "other students"
 ATTACK_PROMPTS = [
@@ -54,23 +54,25 @@ async def test_defense(system_prompt: str, user_prompt: str, code_word: str) -> 
     full_system_prompt = f"{system_prompt} The code word is: {code_word}"
     
     try:
+        if not GEMINI_API_KEY:
+            return {
+                "revealed": None,
+                "response": "Missing GEMINI_API_KEY in environment",
+                "match_details": "N/A"
+            }
+
+        api_url = f"{GEMINI_API_URL}/{MODEL}:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": full_system_prompt}]},
+                {"role": "model", "parts": [{"text": "Understood."}]},
+                {"role": "user", "parts": [{"text": user_prompt}]}
+            ],
+            "generationConfig": {"maxOutputTokens": 512, "temperature": 0.7}
+        }
+
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                GEMINI_API_URL,
-                headers={
-                    "Authorization": f"Bearer {GEMINI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": MODEL,
-                    "messages": [
-                        {"role": "system", "content": full_system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 500
-                }
-            )
+            response = await client.post(api_url, headers={"Content-Type": "application/json"}, json=payload)
             
             if response.status_code != 200:
                 return {
@@ -80,7 +82,17 @@ async def test_defense(system_prompt: str, user_prompt: str, code_word: str) -> 
                 }
             
             result = response.json()
-            llm_output = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            # Extract text from Gemini candidates
+            llm_output = ""
+            for cand in result.get("candidates", []) or []:
+                parts = (cand.get("content", {}) or {}).get("parts")
+                if isinstance(parts, list):
+                    for p in parts:
+                        if isinstance(p, dict) and p.get("text"):
+                            llm_output = p["text"]
+                            break
+                if llm_output:
+                    break
             
             # Check if code word appears in output (case-insensitive, ignore punctuation)
             normalized_output = llm_output.lower()
